@@ -37,25 +37,44 @@ class AuthController extends Controller
     {
         $request->validated($request->all());
 
+        $user = User::where('username',$request->username)->first();
+
+        if(!$user)
+        {
+            return response()->json([
+                'User not Found'
+            ],404);
+        }
+
         $auth_attempt = Auth::attempt([
-            'username' => $request->username,
+            'username' => $user->username,
             'password' => $request->password
         ]);
 
         if(!$auth_attempt)
         {
             return response()->json([
+                'Incorrect Password'
+            ],401);
+        }
+        elseif($auth_attempt)
+        {
+            $user = User::where('username',$request->username)->first();
+
+            $token = $user->createToken('Login API Token of: '.$request->username)->plainTextToken;
+    
+            return response()->json([
+                'Successful login, token: '.$token
+            ]);
+    
+        }
+        else
+        {
+            return response()->json([
                 'Failed login'
             ],401);
         }
 
-        $user = User::where('username',$request->username)->first();
-
-        $token = $user->createToken('Login API Token of: '.$request->username)->plainTextToken;
-
-        return response()->json([
-            'Successful login, token: '.$token
-        ]);
-
+        
     }
 }
