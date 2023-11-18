@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\API\Post\StorePostRequest;
 use App\Http\Requests\API\Post\UpdatePostRequest;
 use App\Models\Post;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 
 class PostController extends Controller
@@ -44,11 +45,20 @@ class PostController extends Controller
      */
     public function show(string $id)
     {
+       try
+       {
         $post = Post::findOrFail($id);
 
         return response()->json([
             $post
         ]);
+       }
+       catch(ModelNotFoundException $ex)
+       {
+        return response()->json([
+            'Post Not Found'
+        ],404);
+       }
     }
 
     /**
@@ -56,9 +66,11 @@ class PostController extends Controller
      */
     public function update(UpdatePostRequest $request, string $id)
     {
-        $request->validated($request->all());
-
+       try
+       {
         $post = Post::findOrFail($id);
+
+        $request->validated($request->all());
 
         $post->update([
             'title' => $request->title,
@@ -66,6 +78,13 @@ class PostController extends Controller
         ]);
 
         return response()->json([$post]);
+       }
+       catch(ModelNotFoundException $ex)
+       {
+        return response()->json([
+            'Post Not Found'
+        ],404);
+       }
     }
 
     /**
@@ -73,10 +92,19 @@ class PostController extends Controller
      */
     public function destroy(string $id)
     {
-        $post = Post::findOrFail($id);
+        try
+        {
+            $post = Post::findOrFail($id);
 
-        $post->delete();
-
-        return response()->json([],204);
+            $post->delete();
+    
+            return response()->json([],204);
+        }
+        catch(ModelNotFoundException $ex)
+        {
+            return response()->json([
+                'Post Not Found'
+            ],404);
+        }
     }
 }
