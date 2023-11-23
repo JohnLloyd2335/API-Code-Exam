@@ -5,22 +5,43 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\API\Post\StorePostRequest;
 use App\Http\Requests\API\Post\UpdatePostRequest;
+use App\Http\Response\HttpResponse;
 use App\Models\Post;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 
 class PostController extends Controller
 {
+
+    use HttpResponse;
+
     /**
      * Display a listing of the resource.
-    */
-    public function index()
+     */
+    public function index(Request $request)
     {
-        $posts = Post::all();
+        $page = $request->page ?? 1;
+        $limit = $request->limit ?? 10;
 
-        return response()->json([
-            $posts
-        ]);
+        $offset = ($page - 1) * $limit;
+
+        $data = Post::offset($offset)->limit($limit)->get()->toArray();
+        $total = Post::count();
+
+        if (empty($data)) {
+            return $this->successResponse(isSuccess: true, message: "No Post Found", data: [], statusCode: 200);
+        }
+
+        return $this->successPaginatedResponse(
+            isSuccess: true,
+            message: "",
+            data: $data,
+            totalRecords: $total,
+            pageNumber: $page,
+            perPage: $limit,
+            offset: $offset,
+            statusCode: 200
+        );
     }
 
     /**
@@ -28,16 +49,13 @@ class PostController extends Controller
      */
     public function store(StorePostRequest $request)
     {
-        $request->validated($request->all());
 
         $post = Post::create([
             'title' => $request->title,
             'content' => $request->content
         ]);
 
-        return response()->json([
-            $post
-        ],201);
+        return $this->successResponse(true, "Post Created", $post->toArray(), 200);
     }
 
     /**
@@ -45,20 +63,12 @@ class PostController extends Controller
      */
     public function show(string $id)
     {
-       try
-       {
-        $post = Post::findOrFail($id);
-
-        return response()->json([
-            $post
-        ]);
-       }
-       catch(ModelNotFoundException $ex)
-       {
-        return response()->json([
-            'Post Not Found'
-        ],404);
-       }
+        try {
+            $post = Post::findOrFail($id);
+            return $this->successResponse(true, "", $post->toArray(), 200);
+        } catch (ModelNotFoundException $ex) {
+            return $this->failedResponse(false, "No Post Found", 404);
+        }
     }
 
     /**
@@ -66,25 +76,20 @@ class PostController extends Controller
      */
     public function update(UpdatePostRequest $request, string $id)
     {
-       try
-       {
-        $post = Post::findOrFail($id);
+        try {
+            $post = Post::findOrFail($id);
 
-        $request->validated($request->all());
+            $request->validated($request->all());
 
-        $post->update([
-            'title' => $request->title,
-            'content' => $request->content
-        ]);
+            $post->update([
+                'title' => $request->title,
+                'content' => $request->content
+            ]);
 
-        return response()->json([$post]);
-       }
-       catch(ModelNotFoundException $ex)
-       {
-        return response()->json([
-            'Post Not Found'
-        ],404);
-       }
+            return $this->successResponse(true,"Post Updated Successfully", $post->toArray(), 200);
+        } catch (ModelNotFoundException $ex) {
+            return $this->failedResponse(false, "No Post Found", 404);
+        }
     }
 
     /**
@@ -92,19 +97,14 @@ class PostController extends Controller
      */
     public function destroy(string $id)
     {
-        try
-        {
+        try {
             $post = Post::findOrFail($id);
 
             $post->delete();
-    
-            return response()->json([],204);
-        }
-        catch(ModelNotFoundException $ex)
-        {
-            return response()->json([
-                'Post Not Found'
-            ],404);
+
+            return $this->successResponse(true,"Post Deleted Successfully", [] , 200);
+        } catch (ModelNotFoundException $ex) {
+            return $this->failedResponse(false, "No Post Found", 404);
         }
     }
 }
